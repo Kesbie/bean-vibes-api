@@ -1,0 +1,1 @@
+const MEDIA_ALLOWED_TYPES = ['image/png', 'image/jpeg']

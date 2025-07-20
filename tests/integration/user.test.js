@@ -622,4 +622,84 @@ describe('User routes', () => {
         .expect(httpStatus.BAD_REQUEST);
     });
   });
+
+  describe('PATCH /v1/users/profile', () => {
+    test('should return 200 and successfully update user profile if data is ok', async () => {
+      await insertUsers([userOne]);
+      const updateBody = {
+        name: faker.name.findName(),
+        email: faker.internet.email().toLowerCase(),
+      };
+
+      const res = await request(app)
+        .patch('/v1/users/profile')
+        .set('Authorization', `Bearer ${userOneAccessToken}`)
+        .send(updateBody)
+        .expect(httpStatus.OK);
+
+      expect(res.body).not.toHaveProperty('password');
+      expect(res.body).toEqual({
+        id: userOne._id.toHexString(),
+        name: updateBody.name,
+        email: updateBody.email,
+        role: 'user',
+        isEmailVerified: false,
+      });
+
+      const dbUser = await User.findById(userOne._id);
+      expect(dbUser).toBeDefined();
+      expect(dbUser).toMatchObject({ name: updateBody.name, email: updateBody.email, role: 'user' });
+    });
+
+    test('should return 401 error if access token is missing', async () => {
+      await insertUsers([userOne]);
+      const updateBody = { name: faker.name.findName() };
+
+      await request(app).patch('/v1/users/profile').send(updateBody).expect(httpStatus.UNAUTHORIZED);
+    });
+
+    test('should return 400 if email is invalid', async () => {
+      await insertUsers([userOne]);
+      const updateBody = { email: 'invalidEmail' };
+
+      await request(app)
+        .patch('/v1/users/profile')
+        .set('Authorization', `Bearer ${userOneAccessToken}`)
+        .send(updateBody)
+        .expect(httpStatus.BAD_REQUEST);
+    });
+
+    test('should return 400 if email is already taken', async () => {
+      await insertUsers([userOne, userTwo]);
+      const updateBody = { email: userTwo.email };
+
+      await request(app)
+        .patch('/v1/users/profile')
+        .set('Authorization', `Bearer ${userOneAccessToken}`)
+        .send(updateBody)
+        .expect(httpStatus.BAD_REQUEST);
+    });
+
+    test('should not return 400 if email is my email', async () => {
+      await insertUsers([userOne]);
+      const updateBody = { email: userOne.email };
+
+      await request(app)
+        .patch('/v1/users/profile')
+        .set('Authorization', `Bearer ${userOneAccessToken}`)
+        .send(updateBody)
+        .expect(httpStatus.OK);
+    });
+
+    test('should return 400 if no fields are provided', async () => {
+      await insertUsers([userOne]);
+      const updateBody = {};
+
+      await request(app)
+        .patch('/v1/users/profile')
+        .set('Authorization', `Bearer ${userOneAccessToken}`)
+        .send(updateBody)
+        .expect(httpStatus.BAD_REQUEST);
+    });
+  });
 });

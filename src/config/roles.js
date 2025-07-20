@@ -1,6 +1,11 @@
+const userRoles = ['getUser', 'updateProfile', 'changePassword', 'uploadMedia'];
+const adminRoles = [...userRoles, 'getCategories', 'manageCategories'];
+const superAdminRoles = [...adminRoles, 'manageUsers', 'getUsers', 'manageRestrictedWords', 'importDistricts', 'importWards'];
+
 const allRoles = {
-  user: [],
-  admin: ['getUsers', 'manageUsers'],
+  user: userRoles,
+  admin: adminRoles,
+  superAdmin: superAdminRoles,
 };
 
 const roles = Object.keys(allRoles);

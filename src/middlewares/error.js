@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
-const httpStatus = require('http-status');
+const { status } = require('http-status');
 const config = require('../config/config');
 const logger = require('../config/logger');
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('../utils/error.response');
 
 const errorConverter = (err, req, res, next) => {
   let error = err;
   if (!(error instanceof ApiError)) {
     const statusCode =
-      error.statusCode || error instanceof mongoose.Error ? httpStatus.BAD_REQUEST : httpStatus.INTERNAL_SERVER_ERROR;
-    const message = error.message || httpStatus[statusCode];
-    error = new ApiError(statusCode, message, false, err.stack);
+      error.statusCode || error instanceof mongoose.Error ? status.BAD_REQUEST : status.INTERNAL_SERVER_ERROR;
+    const message = error.message || status[statusCode];
+    error = new ApiError({ statusCode, message, stack: err.stack });
   }
   next(error);
 };
@@ -19,8 +19,8 @@ const errorConverter = (err, req, res, next) => {
 const errorHandler = (err, req, res, next) => {
   let { statusCode, message } = err;
   if (config.env === 'production' && !err.isOperational) {
-    statusCode = httpStatus.INTERNAL_SERVER_ERROR;
-    message = httpStatus[httpStatus.INTERNAL_SERVER_ERROR];
+    statusCode = status.INTERNAL_SERVER_ERROR;
+    message = status[status.INTERNAL_SERVER_ERROR];
   }
 
   res.locals.errorMessage = err.message;

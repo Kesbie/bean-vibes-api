@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const { toJSON, paginate } = require('./plugins');
 const { roles } = require('../config/roles');
 
+/** @typedef {import("mongoose").Schema} Schema */
+/** @type {Schema} */
 const userSchema = mongoose.Schema(
   {
     name: {
@@ -44,10 +46,26 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+    bannedReason: {
+      type: String,
+      default: '',
+    },
+    favorites: {
+      type: [mongoose.SchemaTypes.ObjectId],
+      ref: 'Place',
+    }
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // add plugin that converts mongoose to json
@@ -82,6 +100,8 @@ userSchema.pre('save', async function (next) {
   }
   next();
 });
+
+
 
 /**
  * @typedef User
