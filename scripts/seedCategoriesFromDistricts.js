@@ -4,6 +4,7 @@ const logger = require('../src/config/logger');
 const Category = require('../src/models/category.model');
 const District = require('../src/models/district.model');
 const { categoryType } = require('../src/config/categoryType');
+const slugify = require('slugify');
 
 const createCategoriesFromDistricts = async () => {
   try {
@@ -20,13 +21,19 @@ const createCategoriesFromDistricts = async () => {
 
     logger.info(`Tìm thấy ${districts.length} districts`);
 
-    // Tạo categories từ districts
-    const categoryData = districts.map((district) => ({
-      name: district.name,
-      description: `Các quán cà phê tại ${district.name} - Khám phá những địa điểm cà phê tuyệt vời trong khu vực này`,
-      type: categoryType.REGION,
-      thumbnail: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400&h=300&fit=crop', // Default thumbnail
-    }));
+    // Tạo categories từ districts với slug
+    const categoryData = districts.map((district, index) => {
+      const baseSlug = slugify(district.name, { lower: true });
+      const slug = `${baseSlug}-${index + 1}`; // Thêm index để đảm bảo unique
+      
+      return {
+        name: district.name,
+        description: `Các quán cà phê tại ${district.name} - Khám phá những địa điểm cà phê tuyệt vời trong khu vực này`,
+        type: categoryType.REGION,
+        thumbnail: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?w=400&h=300&fit=crop', // Default thumbnail
+        slug: slug
+      };
+    });
 
     // Kiểm tra xem đã có categories nào với type REGION chưa
     const existingRegionCategories = await Category.find({ type: categoryType.REGION });
