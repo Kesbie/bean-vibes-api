@@ -5,10 +5,10 @@ const User = require('../src/models/user.model');
 
 const userData = [
   {
-    name: 'Nguyễn Văn An',
-    email: 'nguyenvanan@example.com',
-    password: 'password123',
-    role: 'user',
+    name: 'Công đức vô lượng',
+    email: 'anhbax@gmail.com',
+    password: 'L0nmemay',
+    role: 'superAdmin',
     isEmailVerified: true,
     isActive: true,
     isBanned: false,
@@ -16,11 +16,11 @@ const userData = [
     favorites: []
   },
   {
-    name: 'Trần Thị Bình',
-    email: 'tranthibinh@example.com',
-    password: 'password123',
-    role: 'user',
-    isEmailVerified: false, // Chưa xác thực email
+    name: 'Cơm nước gì chưa',
+    email: 'congducvoulung@gmail.com',
+    password: 'L0nmemay',
+    role: 'moderator',
+    isEmailVerified: true, // Chưa xác thực email
     isActive: false, // Chưa active vì chưa xác thực email
     isBanned: false,
     bannedReason: '',
