@@ -7,7 +7,7 @@ const fileFilter = (req, res, next) => {
   const mimetype = allowedTypes.test(res.mimetype);
 
   if (mimetype && extname) {
-    return next();
+    return next(null, true);
   } else {
     return next(new BAD_REQUEST('Invalid file type. Only images and videos are allowed.'));
   }

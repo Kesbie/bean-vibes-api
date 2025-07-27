@@ -5,21 +5,23 @@ const { upload } = require('../config/multer');
 const path = require('path');
 const { BAD_REQUEST, NOT_FOUND } = require('../utils/error.response');
 const config = require('../config/config');
-const ApiSuccess = require('../utils/success.response');
+const { CREATED, OK } = require('../utils/success.response');
 
 const uploadMedia = catchAsync(async (req, res) => {
   if (!req.files || req.files.length === 0) {
-    throw new BAD_REQUEST('No files uploaded');
+    throw new BAD_REQUEST('No files uploaded. Please ensure you are sending files with the field name "files"');
   }
 
   const uploadedMedia = [];
 
   for (const file of req.files) {
+    console.log('Processing file:', file.originalname, 'Size:', file.size);
+
     // Determine file type based on extension
     const ext = path.extname(file.originalname).toLowerCase();
     const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const videoTypes = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'];
-    
+
     let mediaType;
     if (imageTypes.includes(ext)) {
       mediaType = 'image';
@@ -38,10 +40,12 @@ const uploadMedia = catchAsync(async (req, res) => {
       filename: file.filename,
     };
 
+    console.log('Creating media with data:', mediaData);
     const media = await mediaService.createMedia(mediaData);
     uploadedMedia.push(media);
   }
 
+  console.log('Successfully uploaded', uploadedMedia.length, 'files');
   new CREATED(uploadedMedia).send(res);
 });
 
@@ -50,7 +54,7 @@ const getMedia = catchAsync(async (req, res) => {
   if (!media) {
     throw new NOT_FOUND('Media not found');
   }
-  res.send(new ApiSuccess(status.OK, { media }));
+  new OK(media).send(res);
 });
 
 const deleteMedia = catchAsync(async (req, res) => {
@@ -58,10 +62,7 @@ const deleteMedia = catchAsync(async (req, res) => {
   if (!media) {
     throw new NOT_FOUND('Media not found');
   }
-  res.json({
-    status: 'success',
-    message: 'Media deleted successfully',
-  });
+  new OK(media).send(res);
 });
 
 module.exports = {

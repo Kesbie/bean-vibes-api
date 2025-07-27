@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { toJSON } = require('./plugins');
 
 const mediaSchema = new mongoose.Schema(
   {
@@ -28,5 +29,7 @@ const mediaSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+mediaSchema.plugin(toJSON);
 
 module.exports = mongoose.model('Media', mediaSchema);

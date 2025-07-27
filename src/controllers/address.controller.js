@@ -3,7 +3,6 @@ const { OK, CREATED, NO_CONTENT } = require('../utils/success.response');
 const catchAsync = require('../utils/catchAsync');
 const districts = require('../data/districts.json');
 const wards = require('../data/wards.json');
-const slugify = require('slugify');
 
 const hanoiDistricts = districts.filter((district) => district.parent_code === '01');
 const hanoiDistrictsData = hanoiDistricts.map((district) => ({

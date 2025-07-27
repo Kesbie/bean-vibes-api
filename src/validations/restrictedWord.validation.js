@@ -26,8 +26,18 @@ const deleteRestrictedWord = {
   }),
 };
 
+const updateRestrictedWord = {
+  params: Joi.object().keys({
+    restrictedWordId: Joi.string().custom(objectId),
+  }),
+  body: Joi.object().keys({
+    type: Joi.string().valid(...Object.values(RESTRICTED_WORD_TYPES)),
+  }),
+};
+
 module.exports = {
   createRestrictedWord,
   queryRestrictedWords,
   deleteRestrictedWord,
+  updateRestrictedWord,
 };

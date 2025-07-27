@@ -20,8 +20,14 @@ const deleteRestrictedWord = catchAsync(async (req, res) => {
   new NO_CONTENT(restrictedWord).send(res);
 });
 
+const updateRestrictedWord = catchAsync(async (req, res) => {
+  const restrictedWord = await restrictedWordService.updateRestrictedWord(req.params.restrictedWordId, req.body);
+  new OK(restrictedWord).send(res);
+});
+
 module.exports = {
   createRestrictedWord,
   getRestrictedWords,
   deleteRestrictedWord,
+  updateRestrictedWord,
 };

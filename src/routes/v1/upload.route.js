@@ -11,7 +11,9 @@ router
   .route('/')
   .post(
     auth('uploadMedia'),
-    upload.array('files', 10), // Allow up to 10 files with field name 'files'
+    upload.array('files', 10, (err) => {
+      console.log(err);
+    }),
     uploadController.uploadMedia
   );
 
