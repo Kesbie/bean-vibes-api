@@ -13,7 +13,7 @@ const categorySchema = mongoose.Schema(
       required: true,
       trim: true,
     },
-    thumbnailUrl: {
+    thumbnail: {
       type: String,
     },
     slug: {

@@ -34,7 +34,7 @@ restrictedWordSchema.pre('save', async function (next) {
   this.normalizedWord = normalizeVietnamese(this.word);
 
   if (!this.replacement) {
-    this.replacement = replacementWord(this.word);
+    this.replacement = replacementWord(this.word.toLowerCase());
   }
 
   next();

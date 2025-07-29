@@ -5,7 +5,7 @@ const createCategory = {
   body: Joi.object().keys({
     name: Joi.string().required(),
     type: Joi.string().required(),
-    thumbnailUrl: Joi.string(),
+    thumbnail: Joi.string().custom(objectId),
     description: Joi.string(),
     slug: Joi.string(),
   }),
@@ -21,13 +21,20 @@ const getCategories = {
   }),
 };
 
+const getCategory = {
+  params: Joi.object().keys({
+    categoryId: Joi.string().custom(objectId),
+  }),
+};
+
 const updateCategory = {
   params: Joi.object().keys({
     categoryId: Joi.string().custom(objectId),
   }),
   body: Joi.object().keys({
     name: Joi.string(),
-    thumbnailUrl: Joi.string(),
+    type: Joi.string(),
+    thumbnail: Joi.string().custom(objectId),
     description: Joi.string(),
     slug: Joi.string(),
   }),
@@ -42,6 +49,7 @@ const deleteCategory = {
 module.exports = {
   createCategory,
   getCategories,
+  getCategory,
   updateCategory,
   deleteCategory,
 };

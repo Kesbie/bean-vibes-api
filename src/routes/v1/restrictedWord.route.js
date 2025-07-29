@@ -19,12 +19,18 @@ router
     restrictedWordController.getRestrictedWords,
   )
 
+
 router
   .route('/:restrictedWordId')
   .delete(
     auth('manageRestrictedWords'),
     validate(restrictedWordValidation.deleteRestrictedWord),
     restrictedWordController.deleteRestrictedWord,
-  );
+  )
+  .patch(
+    auth('manageRestrictedWords'),
+    validate(restrictedWordValidation.updateRestrictedWord),
+    restrictedWordController.updateRestrictedWord,
+  )
 
 module.exports = router;

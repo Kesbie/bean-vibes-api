@@ -3,6 +3,7 @@ const { BAD_REQUEST } = require('../utils/error.response');
 
 const createRestrictedWord = async (restrictedWordBody) => {
   const isWordExists = await RestrictedWord.isWordExists(restrictedWordBody.word);
+  
   if (isWordExists) {
     throw new BAD_REQUEST('Word already exists');
   }
@@ -24,8 +25,19 @@ const deleteRestrictedWord = async (restrictedWordId) => {
   return restrictedWord;
 };
 
+const updateRestrictedWord = async (restrictedWordId, restrictedWordBody) => {
+  const restrictedWord = await RestrictedWord.findById(restrictedWordId);
+  if (!restrictedWord) {
+    throw new NOT_FOUND('Restricted word not found');
+  }
+  Object.assign(restrictedWord, restrictedWordBody);
+  await restrictedWord.save();
+  return restrictedWord;
+};
+
 module.exports = {
   createRestrictedWord,
   queryRestrictedWords,
   deleteRestrictedWord,
+  updateRestrictedWord,
 };

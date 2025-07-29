@@ -15,6 +15,11 @@ const getCategories = catchAsync(async (req, res) => {
   new OK(result).send(res);
 });
 
+const getCategory = catchAsync(async (req, res) => {
+  const category = await categoryService.getCategoryById(req.params.categoryId);
+  new OK(category).send(res);
+});
+
 const updateCategory = catchAsync(async (req, res) => {
   const category = await categoryService.updateCategoryById(req.params.categoryId, req.body);
   new OK(category).send(res);
@@ -28,6 +33,7 @@ const deleteCategory = catchAsync(async (req, res) => {
 module.exports = {
   createCategory,
   getCategories,
+  getCategory,
   updateCategory,
   deleteCategory,
 };

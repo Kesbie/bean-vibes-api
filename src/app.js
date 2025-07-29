@@ -43,8 +43,14 @@ app.use(mongoSanitize());
 app.use(compression());
 
 // enable cors
+const corsOptions = {
+  origin: '*',
+  methods: ['GET'],
+};
+
 app.use(cors());
 app.options('*', cors());
+app.use('/uploads/*', cors(corsOptions));
 
 // serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
@@ -57,6 +63,7 @@ passport.use('jwt', jwtStrategy);
 if (config.env === 'production') {
   app.use('/v1/auth', authLimiter);
 }
+
 
 // v1 api routes
 app.use('/v1', routes);
