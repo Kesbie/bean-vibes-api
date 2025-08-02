@@ -12,12 +12,26 @@ components:
           type: string
         role:
           type: string
-          enum: [user, admin]
+          enum: [user, admin, moderator]
+        isEmailVerified:
+          type: boolean
+        avatar:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
       example:
         id: 5ebac534954b54139806c112
         email: fake@example.com
         name: fake name
         role: user
+        isEmailVerified: false
+        avatar: null
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
 
     Token:
       type: object
@@ -38,6 +52,418 @@ components:
           $ref: '#/components/schemas/Token'
         refresh:
           $ref: '#/components/schemas/Token'
+
+    Place:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        phone:
+          type: string
+        website:
+          type: string
+        openingHours:
+          type: object
+        categoryId:
+          type: string
+        category:
+          $ref: '#/components/schemas/Category'
+        rating:
+          type: number
+        totalReviews:
+          type: number
+        totalRatings:
+          type: number
+        isVerified:
+          type: boolean
+        isApproved:
+          type: boolean
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c113
+        name: Coffee House
+        description: A cozy coffee shop
+        address: 123 Main St, City
+        latitude: 10.762622
+        longitude: 106.660172
+        phone: "+84123456789"
+        website: "https://coffeehouse.com"
+        openingHours: {}
+        categoryId: "5ebac534954b54139806c114"
+        rating: 4.5
+        totalReviews: 10
+        totalRatings: 15
+        isVerified: true
+        isApproved: true
+        status: "active"
+        createdBy: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [coffee_shop, restaurant, cafe, bar]
+        icon:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c114
+        name: Coffee Shop
+        description: Traditional coffee shops
+        type: "coffee_shop"
+        icon: "coffee"
+        color: "#8B4513"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        rating:
+          type: number
+          minimum: 1
+          maximum: 5
+        placeId:
+          type: string
+        place:
+          $ref: '#/components/schemas/Place'
+        userId:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        isAnonymous:
+          type: boolean
+        totalReactions:
+          type: number
+        totalComments:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c115
+        content: "Great coffee and atmosphere!"
+        rating: 5
+        placeId: "5ebac534954b54139806c113"
+        userId: "5ebac534954b54139806c112"
+        isAnonymous: false
+        totalReactions: 3
+        totalComments: 2
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        reviewId:
+          type: string
+        userId:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c116
+        content: "I agree, the coffee is amazing!"
+        reviewId: "5ebac534954b54139806c115"
+        userId: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Rating:
+      type: object
+      properties:
+        id:
+          type: string
+        value:
+          type: number
+          minimum: 1
+          maximum: 5
+        placeId:
+          type: string
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c117
+        value: 4
+        placeId: "5ebac534954b54139806c113"
+        userId: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Reaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [like, love, helpful, funny]
+        reviewId:
+          type: string
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c118
+        type: "like"
+        reviewId: "5ebac534954b54139806c115"
+        userId: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [inappropriate, spam, fake, other]
+        reason:
+          type: string
+        targetType:
+          type: string
+          enum: [place, review, comment, user]
+        targetId:
+          type: string
+        reporterId:
+          type: string
+        status:
+          type: string
+          enum: [pending, resolved, dismissed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c119
+        type: "inappropriate"
+        reason: "This content violates our community guidelines"
+        targetType: "review"
+        targetId: "5ebac534954b54139806c115"
+        reporterId: "5ebac534954b54139806c112"
+        status: "pending"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: number
+        url:
+          type: string
+        uploadedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c120
+        filename: "coffee_shop_123.jpg"
+        originalName: "coffee_shop.jpg"
+        mimeType: "image/jpeg"
+        size: 1024000
+        url: "https://uploads.beanvibes.com/coffee_shop_123.jpg"
+        uploadedBy: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+        street:
+          type: string
+        ward:
+          type: string
+        district:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c121
+        street: "123 Main Street"
+        ward: "Ward 1"
+        district: "District 1"
+        city: "Ho Chi Minh City"
+        country: "Vietnam"
+        postalCode: "70000"
+        latitude: 10.762622
+        longitude: 106.660172
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    RestrictedWord:
+      type: object
+      properties:
+        id:
+          type: string
+        word:
+          type: string
+        type:
+          type: string
+          enum: [profanity, spam, inappropriate]
+        replacement:
+          type: string
+        isActive:
+          type: boolean
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c122
+        word: "bad_word"
+        type: "profanity"
+        replacement: "***"
+        isActive: true
+        createdBy: "5ebac534954b54139806c112"
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    ModeratorRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewedBy:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 5ebac534954b54139806c123
+        userId: "5ebac534954b54139806c112"
+        reason: "I want to help moderate the community"
+        status: "pending"
+        reviewedBy: null
+        reviewedAt: null
+        createdAt: 2020-05-12T16:18:04.793Z
+        updatedAt: 2020-05-12T16:18:04.793Z
+
+    PaginatedResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
 
     Error:
       type: object
@@ -84,6 +510,24 @@ components:
           example:
             code: 404
             message: Not found
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 400
+            message: Validation error
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 500
+            message: Internal server error
 
   securitySchemes:
     bearerAuth:

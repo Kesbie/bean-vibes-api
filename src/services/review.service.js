@@ -176,6 +176,23 @@ const addCommentToReview = async (reviewId, commentData) => {
   return comment;
 };
 
+/**
+ * Increment view count for review
+ * @param {ObjectId} reviewId
+ * @returns {Promise<Review>}
+ */
+const incrementViewCount = async (reviewId) => {
+  const review = await getReviewById(reviewId);
+  if (!review) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
+  }
+  
+  review.viewCount = (review.viewCount || 0) + 1;
+  await review.save();
+  
+  return review;
+};
+
 module.exports = {
   createReview,
   queryReviews,
@@ -189,4 +206,5 @@ module.exports = {
   addReactionToReview,
   removeReactionFromReview,
   addCommentToReview,
+  incrementViewCount,
 }; 

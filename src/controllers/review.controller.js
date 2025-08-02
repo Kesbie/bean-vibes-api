@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const { reviewService } = require('../services');
 const pick = require('../utils/pick');
 const ApiError = require('../utils/error.response');
+const { OK, NOT_FOUND } = require('../utils/success.response');
 
 const createReview = catchAsync(async (req, res) => {
   const review = await reviewService.createReview({
@@ -22,9 +23,9 @@ const getReviews = catchAsync(async (req, res) => {
 const getReview = catchAsync(async (req, res) => {
   const review = await reviewService.getReviewById(req.params.reviewId);
   if (!review) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
+    return new NOT_FOUND('Review not found').send(res);
   }
-  res.send(review);
+  new OK(review).send(res);
 });
 
 const updateReview = catchAsync(async (req, res) => {
@@ -40,7 +41,7 @@ const deleteReview = catchAsync(async (req, res) => {
 const getReviewsByPlace = catchAsync(async (req, res) => {
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await reviewService.getReviewsByPlace(req.params.placeId, options);
-  res.send(result);
+  new OK(result).send(res);
 });
 
 const getReviewsByUser = catchAsync(async (req, res) => {
@@ -83,6 +84,11 @@ const addCommentToReview = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send(comment);
 });
 
+const incrementViewCount = catchAsync(async (req, res) => {
+  const review = await reviewService.incrementViewCount(req.params.reviewId);
+  new OK(review).send(res);
+});
+
 module.exports = {
   createReview,
   getReviews,
@@ -96,4 +102,5 @@ module.exports = {
   addReactionToReview,
   removeReactionFromReview,
   addCommentToReview,
+  incrementViewCount,
 }; 

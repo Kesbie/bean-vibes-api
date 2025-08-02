@@ -14,15 +14,15 @@ const getPublicPlaces = catchAsync(async (req, res) => {
   filter.approvalStatus = 'approved';
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await placeService.queryPlaces(filter, options);
-  res.send(result);
+  new OK(result).send(res);
 });
 
 const getPublicPlace = catchAsync(async (req, res) => {
   const place = await placeService.getPublicPlaceById(req.params.placeId);
   if (!place) {
-    new NOT_FOUND.res('Place not found');
+    return new NOT_FOUND('Place not found').send(res);
   }
-  res.send(place);
+  new OK(place).send(res);
 });
 
 const searchPlaces = catchAsync(async (req, res) => {
