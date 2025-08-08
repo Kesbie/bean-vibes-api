@@ -67,10 +67,13 @@ const queryCategories = async (filter, options) => {
     { $limit: limit }
   );
 
-  // Add sorting if provided
+  // Add sorting - default to placeCount desc, then by custom sortBy if provided
   if (options.sortBy) {
     const sortOrder = options.sortOrder === 'desc' ? -1 : 1;
     aggregationPipeline.push({ $sort: { [options.sortBy]: sortOrder } });
+  } else {
+    // Default sorting: placeCount desc (most places first), then name asc
+    aggregationPipeline.push({ $sort: { placeCount: -1, name: 1 } });
   }
 
   // Execute aggregation

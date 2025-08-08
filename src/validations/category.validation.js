@@ -15,7 +15,8 @@ const getCategories = {
   query: Joi.object().keys({
     name: Joi.string(),
     type: Joi.string(),
-    sortBy: Joi.string(),
+    sortBy: Joi.string().valid('name', 'type', 'placeCount', 'createdAt', 'updatedAt'),
+    sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
   }),
