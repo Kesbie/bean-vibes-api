@@ -2,6 +2,7 @@ const express = require('express');
 const validate = require('../../middlewares/validate');
 const { ratingValidation } = require('../../validations');
 const { ratingController } = require('../../controllers');
+const { auth } = require('../../middlewares/auth');
 
 const router = express.Router();
 
@@ -18,6 +19,17 @@ router.get('/:placeId/average', validate(ratingValidation.getAverageRating), rat
  * @access Public
  */
 router.get('/:placeId/breakdown', validate(ratingValidation.getRatingBreakdown), ratingController.getRatingBreakdown);
+
+/**
+ * @route GET /v1/rating/:placeId/criteria-averages
+ * @desc Get average ratings for each criteria separately
+ * @access Public
+ */
+router.get(
+  '/:placeId/criteria-averages',
+  validate(ratingValidation.getCriteriaAverages),
+  ratingController.getCriteriaAverages,
+);
 
 /**
  * @route PUT /v1/rating/:placeId/update-average
@@ -38,7 +50,7 @@ router.get('/:placeId/ratings', validate(ratingValidation.getRatingsByPlace), ra
  * @desc Create a new rating
  * @access Public
  */
-router.post('/', validate(ratingValidation.createRating), ratingController.createRating);
+router.post('/', auth(), validate(ratingValidation.createRating), ratingController.createRating);
 
 /**
  * @route PUT /v1/rating/:ratingId
@@ -53,6 +65,8 @@ router.put('/:ratingId', validate(ratingValidation.updateRating), ratingControll
  * @access Public
  */
 router.delete('/:ratingId', validate(ratingValidation.deleteRating), ratingController.deleteRating);
+
+router.get('/:placeId/user', auth(), ratingController.getRatingPlaceByUser);
 
 module.exports = router;
 
@@ -341,4 +355,4 @@ module.exports = router;
  *         description: No content
  *       "404":
  *         $ref: '#/components/responses/NotFound'
- */ 
+ */

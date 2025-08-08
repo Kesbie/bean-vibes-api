@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { commentValidation } = require('../../validations');
 const { commentController } = require('../../controllers');
@@ -16,6 +16,15 @@ router
   .get(validate(commentValidation.getComment), commentController.getComment)
   .patch(auth(), validate(commentValidation.updateComment), commentController.updateComment)
   .delete(auth(), validate(commentValidation.deleteComment), commentController.deleteComment);
+
+// Admin-only routes for hiding/unhiding comments
+router
+  .route('/:commentId/hide')
+  .patch(auth('manageHiddenComments'), validate(commentValidation.hideComment), commentController.hideComment);
+
+router
+  .route('/:commentId/unhide')
+  .patch(auth('manageHiddenComments'), validate(commentValidation.unhideComment), commentController.unhideComment);
 
 router
   .route('/review/:reviewId')
@@ -93,6 +102,11 @@ module.exports = router;
  *         schema:
  *           type: string
  *         description: Filter by user ID
+ *       - in: query
+ *         name: includeHidden
+ *         schema:
+ *           type: boolean
+ *         description: Include hidden comments (admin only)
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -208,6 +222,65 @@ module.exports = router;
  *     responses:
  *       "204":
  *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /comments/{commentId}/hide:
+ *   patch:
+ *     summary: Hide a comment (admin only)
+ *     description: Hide a comment from public view (admin only)
+ *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comment ID
+ *     responses:
+ *       "200":
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Comment'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *
+ * /comments/{commentId}/unhide:
+ *   patch:
+ *     summary: Unhide a comment (admin only)
+ *     description: Make a hidden comment visible again (admin only)
+ *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comment ID
+ *     responses:
+ *       "200":
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Comment'
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":

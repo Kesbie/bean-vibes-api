@@ -1,7 +1,8 @@
 const httpStatus = require('http-status');
 const { Review } = require('../models');
-const ApiError = require('../utils/error.response');
 const pick = require('../utils/pick');
+const { BAD_REQUEST } = require('../utils/error.response');
+const ApiError = require('../utils/error.response');
 
 /**
  * Create a review
@@ -9,7 +10,13 @@ const pick = require('../utils/pick');
  * @returns {Promise<Review>}
  */
 const createReview = async (reviewBody) => {
-  return Review.create(reviewBody);
+  const review = await Review.create(reviewBody);
+
+  if (!review) {
+    throw new BAD_REQUEST();
+  }
+
+  return review;
 };
 
 /**
@@ -19,10 +26,26 @@ const createReview = async (reviewBody) => {
  * @param {string} [options.sortBy] - Sort option in the format: sortField:(desc|asc)
  * @param {number} [options.limit] - Maximum number of results per page (default = 10)
  * @param {number} [options.page] - Current page (default = 1)
+ * @param {boolean} [options.includeHidden] - Whether to include hidden reviews
  * @returns {Promise<QueryResult>}
  */
 const queryReviews = async (filter, options) => {
-  const reviews = await Review.paginate(filter, options);
+  const { includeHidden, ...queryOptions } = options;
+  
+  // By default, exclude hidden reviews unless explicitly requested
+  if (!includeHidden) {
+    filter.isHidden = { $ne: true };
+  }
+  
+  const reviews = await Review.paginate(filter, {
+    ...queryOptions,
+    // populate: [
+    //   {
+    //     path: 'place',
+    //     select: 'name',
+    //   },
+    // ],
+  })
   return reviews;
 };
 
@@ -66,6 +89,36 @@ const deleteReviewById = async (reviewId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
   }
   await review.remove();
+  return review;
+};
+
+/**
+ * Hide review by id (admin only)
+ * @param {ObjectId} reviewId
+ * @returns {Promise<Review>}
+ */
+const hideReviewById = async (reviewId) => {
+  const review = await getReviewById(reviewId);
+  if (!review) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
+  }
+  review.isHidden = true;
+  await review.save();
+  return review;
+};
+
+/**
+ * Unhide review by id (admin only)
+ * @param {ObjectId} reviewId
+ * @returns {Promise<Review>}
+ */
+const unhideReviewById = async (reviewId) => {
+  const review = await getReviewById(reviewId);
+  if (!review) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
+  }
+  review.isHidden = false;
+  await review.save();
   return review;
 };
 
@@ -199,6 +252,8 @@ module.exports = {
   getReviewById,
   updateReviewById,
   deleteReviewById,
+  hideReviewById,
+  unhideReviewById,
   getReviewsByPlace,
   getReviewsByUser,
   searchReviews,

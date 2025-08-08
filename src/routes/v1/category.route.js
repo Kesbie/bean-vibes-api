@@ -1,30 +1,15 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const categoryValidation = require('../../validations/category.validation');
 const categoryController = require('../../controllers/category.controller');
 
 const router = express.Router();
 
-// ========================================
-// PUBLIC ROUTES (No authentication required)
-// ========================================
-// Client can get all categories without authentication
-router
-  .route('/public')
-  .get(validate(categoryValidation.getCategories), categoryController.getCategories);
-
-router
-  .route('/public/:categoryId')
-  .get(validate(categoryValidation.getCategory), categoryController.getCategory);
-
-// ========================================
-// ADMIN ROUTES (Authentication required)
-// ========================================
 router
   .route('/')
   .post(auth('manageCategories'), validate(categoryValidation.createCategory), categoryController.createCategory)
-  .get(auth('getCategories'), validate(categoryValidation.getCategories), categoryController.getCategories);
+  .get(validate(categoryValidation.getCategories), categoryController.getCategories);
 
 router
   .route('/:categoryId')

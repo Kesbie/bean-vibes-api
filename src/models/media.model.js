@@ -24,6 +24,31 @@ const mediaSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Cloudinary specific fields
+    cloudinaryId: {
+      type: String,
+      required: true,
+    },
+    cloudinaryUrl: {
+      type: String,
+      required: true,
+    },
+    format: {
+      type: String,
+      required: true,
+    },
+    width: {
+      type: Number,
+      required: false,
+    },
+    height: {
+      type: Number,
+      required: false,
+    },
+    bytes: {
+      type: Number,
+      required: false,
+    },
   },
   {
     timestamps: true,

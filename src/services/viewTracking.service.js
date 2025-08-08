@@ -77,7 +77,7 @@ const getTrendingPlaces = async (options = {}) => {
       sortBy: `${sortField}:desc`,
       limit: parseInt(limit),
       page: parseInt(page),
-      populate: 'categories',
+      populate: {path: 'categories'},
     }
   );
   

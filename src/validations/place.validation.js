@@ -1,19 +1,16 @@
 const Joi = require('joi');
-const { objectId } = require('./custom.validation');
+const { objectId, file } = require('./custom.validation');
 
 const createPlace = {
   body: Joi.object().keys({
     name: Joi.string().required().min(1).max(200),
     description: Joi.string().max(2000),
-    photos: Joi.array().items(Joi.string().uri()),
+    photos: Joi.array().items(Joi.object().keys().custom(file)),
+    menu: Joi.array().items(Joi.object().keys().custom(file)),
     address: Joi.object().keys({
-      street: Joi.string().max(200),
-      ward: Joi.string().max(100),
-      district: Joi.string().max(100),
       fullAddress: Joi.string().max(500),
-      coordinates: Joi.object().keys({
-        latitude: Joi.number().min(-90).max(90),
-        longitude: Joi.number().min(-180).max(180),
+      location: Joi.object().optional().keys({
+        coordinates: Joi.array().items(Joi.number()),
       }),
     }),
     status: Joi.string().valid('active', 'inactive'),
@@ -29,17 +26,25 @@ const createPlace = {
       min: Joi.number().min(0),
       max: Joi.number().min(0),
     }),
-    socials: Joi.array().items(Joi.string().uri()),
+    socials: Joi.array().items(Joi.object().keys({
+      type: Joi.string().max(100),
+      url: Joi.string().uri(),
+    })),
     categories: Joi.array().items(Joi.string().custom(objectId)),
   }),
 };
 
 const getPlaces = {
   query: Joi.object().keys({
-    status: Joi.string().valid('active', 'inactive'),
-    isVerified: Joi.boolean(),
-    approvalStatus: Joi.string().valid('pending', 'approved', 'rejected'),
-    categories: Joi.string().custom(objectId),
+    name: Joi.string(),
+    category: Joi.alternatives().try(
+      Joi.string().description('Single category slug or comma-separated list'),
+      Joi.array().items(Joi.string()).description('Array of category slugs')
+    ),
+    categories: Joi.alternatives().try(
+      Joi.string().description('Single category slug or comma-separated list'),
+      Joi.array().items(Joi.string()).description('Array of category slugs')
+    ),
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
@@ -60,15 +65,12 @@ const updatePlace = {
     .keys({
       name: Joi.string().min(1).max(200),
       description: Joi.string().max(2000),
-      photos: Joi.array().items(Joi.string().uri()),
+      photos: Joi.array().items(Joi.object().keys().custom(file)),
+      menu: Joi.array().items(Joi.object().keys().custom(file)),
       address: Joi.object().keys({
-        street: Joi.string().max(200),
-        ward: Joi.string().max(100),
-        district: Joi.string().max(100),
         fullAddress: Joi.string().max(500),
-        coordinates: Joi.object().keys({
-          latitude: Joi.number().min(-90).max(90),
-          longitude: Joi.number().min(-180).max(180),
+        location: Joi.object().optional().keys({
+          coordinates: Joi.array().items(Joi.number()),
         }),
       }),
       status: Joi.string().valid('active', 'inactive'),
@@ -130,6 +132,7 @@ const updatePlaceApprovalStatus = {
   }),
   body: Joi.object().keys({
     status: Joi.string().valid('pending', 'approved', 'rejected').required(),
+    reason: Joi.string().optional().max(2000),
   }),
 };
 
@@ -192,15 +195,20 @@ const getPublicPlaces = {
     sortBy: Joi.string(),
     limit: Joi.number().integer().min(1).max(100),
     page: Joi.number().integer().min(1),
-    categories: Joi.string().custom(objectId),
-    district: Joi.string(),
-    ward: Joi.string(),
+    category: Joi.alternatives().try(Joi.array().items(Joi.string()), Joi.string()),
+    name: Joi.string(),
   }),
 };
 
 const getPublicPlace = {
   params: Joi.object().keys({
     placeId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const getPublicPlaceBySlug = {
+  params: Joi.object().keys({
+    slug: Joi.string().required(),
   }),
 };
 
@@ -284,4 +292,5 @@ module.exports = {
   getAdminPlaces,
   getPendingPlaces,
   getAdminPlace,
+  getPublicPlaceBySlug,
 }; 

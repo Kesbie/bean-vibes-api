@@ -1,16 +1,15 @@
-const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { ratingService } = require('../services');
-const { successResponse } = require('../utils/success.response');
+const { NOT_FOUND } = require('../utils/error.response');
 const Rating = require('../models/rating.model');
-
+const { CREATED, OK } = require('../utils/success.response');
 /**
  * Get average rating for a place
  */
 const getAverageRating = catchAsync(async (req, res) => {
   const { placeId } = req.params;
   const ratingInfo = await ratingService.getAverageRating(placeId);
-  res.status(httpStatus.OK).json(successResponse('Lấy điểm đánh giá trung bình thành công', ratingInfo));
+  new OK(ratingInfo).send(res);
 });
 
 /**
@@ -19,7 +18,16 @@ const getAverageRating = catchAsync(async (req, res) => {
 const getRatingBreakdown = catchAsync(async (req, res) => {
   const { placeId } = req.params;
   const breakdown = await ratingService.getRatingBreakdown(placeId);
-  res.status(httpStatus.OK).json(successResponse('Lấy chi tiết đánh giá thành công', breakdown));
+  new OK(breakdown).send(res);
+});
+
+/**
+ * Get average ratings for each criteria separately
+ */
+const getCriteriaAverages = catchAsync(async (req, res) => {
+  const { placeId } = req.params;
+  const averages = await ratingService.getCriteriaAverages(placeId);
+  new OK(averages).send(res);
 });
 
 /**
@@ -28,19 +36,19 @@ const getRatingBreakdown = catchAsync(async (req, res) => {
 const updateAverageRating = catchAsync(async (req, res) => {
   const { placeId } = req.params;
   const result = await ratingService.calculateAndUpdateAverageRating(placeId);
-  res.status(httpStatus.OK).json(successResponse('Cập nhật điểm đánh giá trung bình thành công', result));
+  new OK(result).send(res);
 });
 
 /**
  * Create a new rating
  */
 const createRating = catchAsync(async (req, res) => {
-  const rating = await Rating.create(req.body);
-  
+  const rating = await Rating.create({ ...req.body, user: req.user.id });
+
   // Automatically update average rating for the place
   await ratingService.calculateAndUpdateAverageRating(rating.place);
-  
-  res.status(httpStatus.CREATED).json(successResponse('Tạo đánh giá thành công', rating));
+
+  new CREATED(rating).send(res);
 });
 
 /**
@@ -49,16 +57,15 @@ const createRating = catchAsync(async (req, res) => {
 const updateRating = catchAsync(async (req, res) => {
   const { ratingId } = req.params;
   const rating = await Rating.findByIdAndUpdate(ratingId, req.body, { new: true });
-  
+
   if (!rating) {
-    res.status(httpStatus.NOT_FOUND).json({ message: 'Không tìm thấy đánh giá' });
-    return;
+    throw new NOT_FOUND('Rating not found');
   }
-  
+
   // Automatically update average rating for the place
   await ratingService.calculateAndUpdateAverageRating(rating.place);
-  
-  res.status(httpStatus.OK).json(successResponse('Cập nhật đánh giá thành công', rating));
+
+  new OK(rating).send(res);
 });
 
 /**
@@ -67,16 +74,15 @@ const updateRating = catchAsync(async (req, res) => {
 const deleteRating = catchAsync(async (req, res) => {
   const { ratingId } = req.params;
   const rating = await Rating.findByIdAndDelete(ratingId);
-  
+
   if (!rating) {
-    res.status(httpStatus.NOT_FOUND).json({ message: 'Không tìm thấy đánh giá' });
-    return;
+    throw new NOT_FOUND('Rating not found');
   }
-  
+
   // Automatically update average rating for the place
   await ratingService.calculateAndUpdateAverageRating(rating.place);
-  
-  res.status(httpStatus.OK).json(successResponse('Xóa đánh giá thành công'));
+
+  new OK().send(res);
 });
 
 /**
@@ -85,15 +91,23 @@ const deleteRating = catchAsync(async (req, res) => {
 const getRatingsByPlace = catchAsync(async (req, res) => {
   const { placeId } = req.params;
   const ratings = await Rating.find({ place: placeId }).populate('user', 'name email');
-  res.status(httpStatus.OK).json(successResponse('Lấy danh sách đánh giá thành công', ratings));
+  new OK(ratings).send(res);
+});
+
+const getRatingPlaceByUser = catchAsync(async (req, res) => {
+  const { placeId } = req.params;
+  const rating = await Rating.findOne({ place: placeId, user: req.user.id });
+  new OK(rating).send(res);
 });
 
 module.exports = {
   getAverageRating,
   getRatingBreakdown,
+  getCriteriaAverages,
   updateAverageRating,
   createRating,
   updateRating,
   deleteRating,
   getRatingsByPlace,
-}; 
+  getRatingPlaceByUser,
+};

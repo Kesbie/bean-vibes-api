@@ -1,5 +1,5 @@
 const userRoles = ['getUser', 'updateProfile', 'changePassword', 'uploadMedia', 'manageOwnPlaces'];
-const adminRoles = [...userRoles, 'getCategories', 'manageCategories', 'managePlaces', 'approvePlaces'];
+const adminRoles = [...userRoles, 'getReports', 'manageReports', 'getCategories', 'manageCategories', 'managePlaces', 'approvePlaces', 'manageHiddenComments', 'manageHiddenReviews'];
 const moderatorRoles = [...userRoles, 'manageModeratorRequests', 'getCategories', 'approvePlaces'];
 const superAdminRoles = [...adminRoles, 'manageUsers', 'getUsers', 'manageRestrictedWords', 'importDistricts', 'importWards', 'manageModeratorRequests'];
 

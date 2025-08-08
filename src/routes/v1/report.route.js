@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { reportValidation } = require('../../validations');
 const { reportController } = require('../../controllers');
@@ -14,6 +14,10 @@ router
 router
   .route('/pending')
   .get(auth('getReports'), validate(reportValidation.getPendingReports), reportController.getPendingReports);
+
+router
+  .route('/stats/users')
+  .get(auth('getReports'), validate(reportValidation.getReportedUsersStats), reportController.getReportedUsersStats);
 
 router
   .route('/status/:status')
@@ -36,5 +40,9 @@ router
 router
   .route('/:reportId/status')
   .patch(auth('manageReports'), validate(reportValidation.updateReportStatus), reportController.updateReportStatus);
+
+router
+  .route('/:reportId/resolve')
+  .post(auth('manageReports'), validate(reportValidation.resolveReport), reportController.resolveReport);
 
 module.exports = router; 

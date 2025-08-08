@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { reviewValidation } = require('../../validations');
 const { reviewController } = require('../../controllers');
@@ -32,6 +32,15 @@ router
   .get(validate(reviewValidation.getReview), reviewController.getReview)
   .patch(auth(), validate(reviewValidation.updateReview), reviewController.updateReview)
   .delete(auth(), validate(reviewValidation.deleteReview), reviewController.deleteReview);
+
+// Admin-only routes for hiding/unhiding reviews
+router
+  .route('/:reviewId/hide')
+  .patch(auth('manageHiddenReviews'), validate(reviewValidation.hideReview), reviewController.hideReview);
+
+router
+  .route('/:reviewId/unhide')
+  .patch(auth('manageHiddenReviews'), validate(reviewValidation.unhideReview), reviewController.unhideReview);
 
 router
   .route('/:reviewId/reactions')
@@ -138,6 +147,11 @@ module.exports = router;
  *         schema:
  *           type: boolean
  *         description: Filter by anonymous status
+ *       - in: query
+ *         name: includeHidden
+ *         schema:
+ *           type: boolean
+ *         description: Include hidden reviews (admin only)
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -469,6 +483,65 @@ module.exports = router;
  *     responses:
  *       "204":
  *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /reviews/{reviewId}/hide:
+ *   patch:
+ *     summary: Hide a review (admin only)
+ *     description: Hide a review from public view (admin only)
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reviewId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Review ID
+ *     responses:
+ *       "200":
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Review'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *
+ * /reviews/{reviewId}/unhide:
+ *   patch:
+ *     summary: Unhide a review (admin only)
+ *     description: Make a hidden review visible again (admin only)
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reviewId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Review ID
+ *     responses:
+ *       "200":
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Review'
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":

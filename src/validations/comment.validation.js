@@ -15,6 +15,7 @@ const getComments = {
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
+    includeHidden: Joi.boolean(),
   }),
 };
 
@@ -36,6 +37,18 @@ const updateComment = {
 };
 
 const deleteComment = {
+  params: Joi.object().keys({
+    commentId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const hideComment = {
+  params: Joi.object().keys({
+    commentId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const unhideComment = {
   params: Joi.object().keys({
     commentId: Joi.string().custom(objectId).required(),
   }),
@@ -69,6 +82,8 @@ module.exports = {
   getComment,
   updateComment,
   deleteComment,
+  hideComment,
+  unhideComment,
   getCommentsByReview,
   getCommentsByUser,
 }; 

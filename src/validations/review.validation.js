@@ -1,13 +1,13 @@
 const Joi = require('joi');
-const { objectId } = require('./custom.validation');
+const { objectId, file } = require('./custom.validation');
 
 const createReview = {
   body: Joi.object().keys({
     place: Joi.string().custom(objectId).required(),
-    title: Joi.string().required().min(1).max(200),
-    content: Joi.string().required().min(1).max(2000),
+    title: Joi.string().required().min(1).max(200).required(),
+    content: Joi.string().required().min(1).max(2000).required(),
     slug: Joi.string().max(200),
-    photos: Joi.number().min(0),
+    photos: Joi.array().items(Joi.object().keys().custom(file)),
     isAnonymous: Joi.boolean(),
   }),
 };
@@ -20,6 +20,7 @@ const getReviews = {
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
+    includeHidden: Joi.boolean(),
   }),
 };
 
@@ -38,13 +39,25 @@ const updateReview = {
       title: Joi.string().min(1).max(200),
       content: Joi.string().min(1).max(2000),
       slug: Joi.string().max(200),
-      photos: Joi.number().min(0),
+      photos: Joi.array().items(Joi.object().keys().custom(file)),
       isAnonymous: Joi.boolean(),
     })
     .min(1),
 };
 
 const deleteReview = {
+  params: Joi.object().keys({
+    reviewId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const hideReview = {
+  params: Joi.object().keys({
+    reviewId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const unhideReview = {
   params: Joi.object().keys({
     reviewId: Joi.string().custom(objectId).required(),
   }),
@@ -122,6 +135,8 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
+  hideReview,
+  unhideReview,
   getReviewsByPlace,
   getReviewsByUser,
   searchReviews,

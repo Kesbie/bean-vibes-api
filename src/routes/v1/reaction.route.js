@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { reactionValidation } = require('../../validations');
 const { reactionController } = require('../../controllers');
@@ -11,17 +11,11 @@ router
   .post(auth(), validate(reactionValidation.createReaction), reactionController.createReaction)
   .get(validate(reactionValidation.getReactions), reactionController.getReactions);
 
-router
-  .route('/toggle')
-  .post(auth(), validate(reactionValidation.toggleReaction), reactionController.toggleReaction);
+router.route('/toggle').post(auth(), validate(reactionValidation.toggleReaction), reactionController.toggleReaction);
 
-router
-  .route('/count')
-  .get(validate(reactionValidation.getReactionCount), reactionController.getReactionCount);
+router.route('/count').get(validate(reactionValidation.getReactionCount), reactionController.getReactionCount);
 
-router
-  .route('/user/:userId')
-  .get(validate(reactionValidation.getReactionsByUser), reactionController.getReactionsByUser);
+router.route('/user/:userId').get(validate(reactionValidation.getReactionsByUser), reactionController.getReactionsByUser);
 
 router
   .route('/review/:reviewId')
@@ -31,9 +25,7 @@ router
   .route('/comment/:commentId')
   .get(validate(reactionValidation.getReactionsByComment), reactionController.getReactionsByComment);
 
-router
-  .route('/type/:type')
-  .get(validate(reactionValidation.getReactionsByType), reactionController.getReactionsByType);
+router.route('/type/:type').get(validate(reactionValidation.getReactionsByType), reactionController.getReactionsByType);
 
 router
   .route('/:reactionId')
@@ -583,4 +575,4 @@ module.exports = router;
  *         $ref: '#/components/responses/Forbidden'
  *       "404":
  *         $ref: '#/components/responses/NotFound'
- */ 
+ */

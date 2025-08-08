@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../../middlewares/auth');
+const { auth } = require('../../middlewares/auth');
 const validate = require('../../middlewares/validate');
 const { upload } = require('../../config/multer');
 const { uploadController } = require('../../controllers');
@@ -10,7 +10,6 @@ const router = express.Router();
 router
   .route('/')
   .post(
-    auth('uploadMedia'),
     upload.array('files', 10, (err) => {
       console.log(err);
     }),

@@ -4,7 +4,7 @@ const { objectId } = require('./custom.validation');
 const createRating = {
   body: Joi.object().keys({
     place: Joi.string().custom(objectId).required(),
-    user: Joi.string().custom(objectId).required(),
+    user: Joi.string().custom(objectId).optional(),
     drinkQuality: Joi.number().min(0).max(5).required(),
     location: Joi.number().min(0).max(5).required(),
     price: Joi.number().min(0).max(5).required(),
@@ -44,6 +44,12 @@ const getRatingBreakdown = {
   }),
 };
 
+const getCriteriaAverages = {
+  params: Joi.object().keys({
+    placeId: Joi.string().custom(objectId).required(),
+  }),
+};
+
 const updateAverageRating = {
   params: Joi.object().keys({
     placeId: Joi.string().custom(objectId).required(),
@@ -62,6 +68,7 @@ module.exports = {
   deleteRating,
   getAverageRating,
   getRatingBreakdown,
+  getCriteriaAverages,
   updateAverageRating,
   getRatingsByPlace,
 }; 

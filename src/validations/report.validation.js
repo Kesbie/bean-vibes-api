@@ -5,8 +5,6 @@ const createReport = {
   body: Joi.object().keys({
     reportable: Joi.string().custom(objectId).required(),
     reportableModel: Joi.string().valid('Review', 'Comment').required(),
-    review: Joi.string().custom(objectId),
-    comment: Joi.string().custom(objectId),
     title: Joi.string().required().min(1).max(200),
     reason: Joi.string().required().min(1).max(1000),
   }),
@@ -14,7 +12,7 @@ const createReport = {
 
 const getReports = {
   query: Joi.object().keys({
-    status: Joi.string().valid('pending', 'approved', 'rejected'),
+    status: Joi.string().valid('pending', 'resolved'),
     reportableModel: Joi.string().valid('Review', 'Comment'),
     user: Joi.string().custom(objectId),
     sortBy: Joi.string(),
@@ -37,7 +35,8 @@ const updateReport = {
     .keys({
       title: Joi.string().min(1).max(200),
       reason: Joi.string().min(1).max(1000),
-      status: Joi.string().valid('pending', 'approved', 'rejected'),
+      status: Joi.string().valid('pending', 'resolved'),
+      resolvedActions: Joi.array().items(Joi.string().valid('hide', 'delete', 'ban_user', 'warn_user')),
     })
     .min(1),
 };
@@ -50,7 +49,7 @@ const deleteReport = {
 
 const getReportsByStatus = {
   params: Joi.object().keys({
-    status: Joi.string().valid('pending', 'approved', 'rejected').required(),
+    status: Joi.string().valid('pending', 'resolved').required(),
   }),
   query: Joi.object().keys({
     sortBy: Joi.string(),
@@ -87,7 +86,16 @@ const updateReportStatus = {
     reportId: Joi.string().custom(objectId).required(),
   }),
   body: Joi.object().keys({
-    status: Joi.string().valid('pending', 'approved', 'rejected').required(),
+    status: Joi.string().valid('pending', 'resolved').required(),
+  }),
+};
+
+const resolveReport = {
+  params: Joi.object().keys({
+    reportId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    resolvedActions: Joi.array().items(Joi.string().valid('hide', 'delete', 'ban_user', 'warn_user')).optional(),
   }),
 };
 
@@ -96,6 +104,14 @@ const getPendingReports = {
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
+  }),
+};
+
+const getReportedUsersStats = {
+  query: Joi.object().keys({
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    page: Joi.number().integer().min(1).default(1),
+    sortBy: Joi.string().valid('reportCount:desc', 'reportCount:asc', 'latestReport:desc', 'latestReport:asc').default('reportCount:desc'),
   }),
 };
 
@@ -109,5 +125,7 @@ module.exports = {
   getReportsByUser,
   getReportsByReportable,
   updateReportStatus,
+  resolveReport,
   getPendingReports,
+  getReportedUsersStats,
 }; 

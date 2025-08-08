@@ -44,6 +44,13 @@
     "add:places-random-categories": "NODE_ENV=development node scripts/addPlaceWithRandomCategories.js",
     "add:places-random-categories:sample": "NODE_ENV=development node scripts/addPlaceWithRandomCategories.js --sample",
     "add:places-random-categories:single": "NODE_ENV=development node scripts/addPlaceWithRandomCategories.js --single",
+    "cleanup:local-uploads": "node scripts/cleanup-local-uploads.js",
+    "delete:all-places": "node scripts/deleteAllPlaces.js",
+    "delete:places-advanced": "node scripts/deletePlacesAdvanced.js",
+    "test:content-filter": "node test-content-filter.js",
+    "add:test-words": "node scripts/addTestRestrictedWords.js",
+    "debug:cloudinary": "node debug-cloudinary.js",
+    "test:cloudinary": "node test-cloudinary-config.js",
     "prepare": "husky"
   },
   "keywords": [
@@ -70,6 +77,7 @@
   ],
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.7.0",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",

@@ -21,6 +21,10 @@ const commentSchema = mongoose.Schema(
     },
     reports: {
       type: [mongoose.SchemaTypes.ObjectId],
+    },
+    isHidden: {
+      type: Boolean,
+      default: false,
     }
   },
   {

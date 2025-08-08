@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { toJSON, paginate } = require('./plugins');
+const { toJSON, paginate, leanToJSON } = require('./plugins');
+const { fileSchema } = require('./commonSchemas');
 
 const reviewSchema = mongoose.Schema({
   place: {
@@ -20,9 +21,7 @@ const reviewSchema = mongoose.Schema({
   slug: {
     type: String,
   },
-  photos: {
-    type: Number,
-  },
+  photos: [fileSchema],
   reactions: {
     type: [mongoose.SchemaTypes.ObjectId],
     ref: 'Reaction',
@@ -38,11 +37,16 @@ const reviewSchema = mongoose.Schema({
   reports: {
     type: [mongoose.SchemaTypes.ObjectId],
   },
+  isHidden: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });
 
 reviewSchema.plugin(toJSON);
 reviewSchema.plugin(paginate);
+reviewSchema.plugin(leanToJSON);
 
 module.exports = mongoose.model('Review', reviewSchema);

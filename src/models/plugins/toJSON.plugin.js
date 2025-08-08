@@ -14,11 +14,46 @@ const deleteAtPath = (obj, path, index) => {
   deleteAtPath(obj[path[index]], path, index + 1);
 };
 
+const transformDoc = (doc) => {
+
+  if (doc._id) {
+    doc.id = doc._id.toString();
+  }
+  delete doc._id;
+  delete doc.__v;
+  // delete doc.createdAt;
+  // delete doc.updatedAt;
+};
+
 const toJSON = (schema) => {
   let transform;
   if (schema.options.toJSON && schema.options.toJSON.transform) {
     transform = schema.options.toJSON.transform;
   }
+
+  schema.post(['find', 'findOne'], function (res) {
+    console.log('--------------------------------');
+    console.log(this.mongooseOptions());
+    console.log('--------------------------------');
+
+    if (!res || !this.mongooseOptions().lean) {
+      return;
+    }
+
+    if (Array.isArray(res)) {
+      res.forEach(transformDoc);
+    } else {
+      transformDoc(res);
+    }
+  });
+
+  schema.post('aggregate', function (res) {
+    if (Array.isArray(res)) {
+      res.forEach(transformDoc);
+    } else {
+      transformDoc(res);
+    }
+  });
 
   schema.options.toJSON = Object.assign(schema.options.toJSON || {}, {
     transform(doc, ret, options) {
@@ -28,11 +63,7 @@ const toJSON = (schema) => {
         }
       });
 
-      ret.id = ret._id.toString();
-      delete ret._id;
-      delete ret.__v;
-      delete ret.createdAt;
-      delete ret.updatedAt;
+      transformDoc(ret);
       if (transform) {
         return transform(doc, ret, options);
       }

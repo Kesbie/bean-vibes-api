@@ -1,8 +1,7 @@
 const { RestrictedWord } = require('../models');
 const { normalizeVietnamese } = require('../utils/nomalizeText');
 const { RESTRICTED_WORD_TYPES } = require('../constants/restrictedWordTypes');
-const ApiError = require('../utils/error.response');
-const httpStatus = require('http-status');
+const { BAD_REQUEST } = require('../utils/error.response');
 
 /**
  * Check if content contains restricted words
@@ -20,8 +19,15 @@ const checkRestrictedContent = async (content) => {
   const foundWords = [];
   let hasBannedWords = false;
 
+  // Split content into words and clean them
+  const contentWords = normalizedContent
+    .split(/\s+/)
+    .map(word => word.replace(/[^\w\s]/g, '')) // Remove punctuation
+    .filter(word => word.length > 0); // Remove empty strings
+
   for (const word of restrictedWords) {
-    if (normalizedContent.includes(word.normalizedWord)) {
+    // Check if the restricted word exists as a complete word in content
+    if (contentWords.includes(word.normalizedWord)) {
       foundWords.push({
         word: word.word,
         type: word.type,
@@ -48,24 +54,9 @@ const checkRestrictedContent = async (content) => {
  */
 const checkPlaceContent = async (placeData) => {
   // Extract address fields for content checking
-  const addressFields = [];
-  if (placeData.address) {
-    if (typeof placeData.address === 'string') {
-      // Handle legacy address format
-      addressFields.push(placeData.address);
-    } else {
-      // Handle new address object format
-      if (placeData.address.street) addressFields.push(placeData.address.street);
-      if (placeData.address.ward) addressFields.push(placeData.address.ward);
-      if (placeData.address.district) addressFields.push(placeData.address.district);
-      if (placeData.address.fullAddress) addressFields.push(placeData.address.fullAddress);
-    }
-  }
-
   const contentToCheck = [
     placeData.name,
     placeData.description,
-    ...addressFields,
   ].filter(Boolean).join(' ');
 
   return checkRestrictedContent(contentToCheck);
@@ -84,8 +75,7 @@ const validatePlaceContent = async (placeData) => {
       .filter(word => word.type === RESTRICTED_WORD_TYPES.BAN)
       .map(word => word.word);
     
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
+    throw new BAD_REQUEST(
       `Content contains banned words: ${bannedWords.join(', ')}`
     );
   }
@@ -103,7 +93,6 @@ const replaceRestrictedWords = async (content) => {
     return content;
   }
 
-  const normalizedContent = normalizeVietnamese(content.toLowerCase());
   const restrictedWords = await RestrictedWord.find({
     type: { $in: [RESTRICTED_WORD_TYPES.WARN, RESTRICTED_WORD_TYPES.HIDE] }
   });
@@ -111,7 +100,8 @@ const replaceRestrictedWords = async (content) => {
   let processedContent = content;
 
   for (const word of restrictedWords) {
-    const regex = new RegExp(word.word, 'gi');
+    // Use word boundary regex to match complete words only
+    const regex = new RegExp(`\\b${word.word}\\b`, 'gi');
     processedContent = processedContent.replace(regex, word.replacement || '*'.repeat(word.word.length));
   }
 

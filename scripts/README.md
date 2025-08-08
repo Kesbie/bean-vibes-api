@@ -1,6 +1,6 @@
 # Database Seeding Scripts
 
-Các script để seed dữ liệu mẫu vào database.
+Các script để seed dữ liệu mẫu vào database và quản lý hệ thống.
 
 ## Các lệnh có sẵn
 
@@ -54,6 +54,12 @@ npm run update:place-ratings
 
 # Xóa trường lastViewedAt khỏi database
 npm run remove:last-viewed-at
+
+# Cleanup local upload files (chuyển sang Cloudinary)
+npm run cleanup:local-uploads
+
+# Delete all places and related data
+npm run delete:all-places
 ```
 
 ### 2. Script global
@@ -98,6 +104,8 @@ scripts/
 ├── updateHotScores.js       # Update hot scores
 ├── updateAllPlaceRatings.js # Update place ratings
 ├── removeLastViewedAt.js    # Xóa trường lastViewedAt
+├── cleanup-local-uploads.js # Cleanup local upload files
+├── deleteAllPlaces.js       # Delete all places and related data
 └── README.md                # File hướng dẫn này
 
 src/scripts/
@@ -114,6 +122,8 @@ src/scripts/
 - Script reset restricted words sẽ xóa và tạo lại danh sách từ cấm
 - Script update sẽ cập nhật dữ liệu thống kê và ratings
 - Mỗi script sẽ tự động kết nối và ngắt kết nối database
+- Script cleanup local uploads sẽ xóa thư mục uploads local khi chuyển sang Cloudinary
+- Script delete all places sẽ xóa tất cả places và dữ liệu liên quan (ratings, reviews, comments, etc.)
 
 ## Troubleshooting
 

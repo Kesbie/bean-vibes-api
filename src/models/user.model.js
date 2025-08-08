@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
-const { toJSON, paginate } = require('./plugins');
+const { toJSON, paginate, leanToJSON } = require('./plugins');
 const { roles } = require('../config/roles');
 
 /** @typedef {import("mongoose").Schema} Schema */
@@ -71,6 +71,7 @@ const userSchema = mongoose.Schema(
 // add plugin that converts mongoose to json
 userSchema.plugin(toJSON);
 userSchema.plugin(paginate);
+userSchema.plugin(leanToJSON);
 
 /**
  * Check if email is taken

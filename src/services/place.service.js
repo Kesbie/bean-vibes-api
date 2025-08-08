@@ -1,9 +1,14 @@
-const httpStatus = require('http-status');
 const { Place } = require('../models');
-const ApiError = require('../utils/error.response');
+const { NOT_FOUND, FORBIDDEN, BAD_REQUEST } = require('../utils/error.response');
 const pick = require('../utils/pick');
 const { validatePlaceContent, replaceRestrictedWords } = require('./contentFilter.service');
-const { trackPlaceView, getTrendingPlaces: getTrendingPlacesFromTracking, getHotPlacesByCategory: getHotPlacesByCategoryFromTracking } = require('./viewTracking.service');
+const {
+  trackPlaceView,
+  getTrendingPlaces: getTrendingPlacesFromTracking,
+  getHotPlacesByCategory: getHotPlacesByCategoryFromTracking,
+} = require('./viewTracking.service');
+const { categoryService, ratingService } = require('../services');
+const reviewService = require('./review.service');
 
 /**
  * Create a place
@@ -13,36 +18,17 @@ const { trackPlaceView, getTrendingPlaces: getTrendingPlacesFromTracking, getHot
 const createPlace = async (placeBody) => {
   // Validate content for restricted words
   await validatePlaceContent(placeBody);
-  
+
   // Process content to replace warn/hide words
   const processedPlaceBody = { ...placeBody };
   if (processedPlaceBody.name) {
     processedPlaceBody.name = await replaceRestrictedWords(processedPlaceBody.name);
   }
+  
   if (processedPlaceBody.description) {
     processedPlaceBody.description = await replaceRestrictedWords(processedPlaceBody.description);
   }
-  if (processedPlaceBody.address) {
-    // Handle new address structure
-    if (typeof processedPlaceBody.address === 'object') {
-      if (processedPlaceBody.address.street) {
-        processedPlaceBody.address.street = await replaceRestrictedWords(processedPlaceBody.address.street);
-      }
-      if (processedPlaceBody.address.ward) {
-        processedPlaceBody.address.ward = await replaceRestrictedWords(processedPlaceBody.address.ward);
-      }
-      if (processedPlaceBody.address.district) {
-        processedPlaceBody.address.district = await replaceRestrictedWords(processedPlaceBody.address.district);
-      }
-      if (processedPlaceBody.address.fullAddress) {
-        processedPlaceBody.address.fullAddress = await replaceRestrictedWords(processedPlaceBody.address.fullAddress);
-      }
-    } else {
-      // Handle legacy address format
-      processedPlaceBody.address = await replaceRestrictedWords(processedPlaceBody.address);
-    }
-  }
-  
+
   return Place.create(processedPlaceBody);
 };
 
@@ -56,7 +42,95 @@ const createPlace = async (placeBody) => {
  * @returns {Promise<QueryResult>}
  */
 const queryPlaces = async (filter, options) => {
-  const places = await Place.paginate(filter, options);
+  // Handle category filter - convert slugs to ObjectIds
+  if (filter.category) {
+    const categorySlugs = Array.isArray(filter.category) ? filter.category : [filter.category];
+    const categories = await categoryService.getCategoryBySlugs(categorySlugs);
+    delete filter.category;
+    // Use 'id' field instead of '_id' as aggregation returns 'id'
+    filter.categories = { $in: categories.map((category) => category.id || category._id) };
+  }
+
+  // Handle name filter - use case-insensitive regex search
+  if (filter.name) {
+    filter.name = { $regex: filter.name, $options: 'i' };
+  }
+
+  // Handle custom sorting for admin users
+  if (options.customSort === 'approvalStatus') {
+    delete options.customSort;
+    const places = await Place.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          approvalStatusOrder: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$approvalStatus', 'pending'] }, then: 1 },
+                { case: { $eq: ['$approvalStatus', 'approved'] }, then: 2 },
+                { case: { $eq: ['$approvalStatus', 'rejected'] }, then: 3 }
+              ],
+              default: 4
+            }
+          }
+        }
+      },
+      { $sort: { approvalStatusOrder: 1, createdAt: -1 } },
+      { $skip: (options.page - 1) * (options.limit || 10) },
+      { $limit: options.limit || 10 },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categories',
+          foreignField: '_id',
+          as: 'categories'
+        }
+      }
+    ]);
+
+    // Get total count for pagination
+    const totalResults = await Place.countDocuments(filter);
+    const totalPages = Math.ceil(totalResults / (options.limit || 10));
+
+    // Add rating details to each place
+    if (places && places.length > 0) {
+      const placesWithRatings = await Promise.all(
+        places.map(async (place) => {
+          const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+          return {
+            ...place,
+            ratingDetails,
+          };
+        }),
+      );
+      places.splice(0, places.length, ...placesWithRatings);
+    }
+
+    return {
+      results: places,
+      page: options.page || 1,
+      limit: options.limit || 10,
+      totalPages,
+      totalResults,
+    };
+  }
+
+  const places = await Place.paginate(filter, { ...options, populate: [{ path: 'categories' }] });
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toJSON(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
   return places;
 };
 
@@ -69,13 +143,29 @@ const queryPlaces = async (filter, options) => {
 const getPlaceById = async (id, userId = null) => {
   const place = await Place.findById(id)
     .populate('categories', 'name')
-    .populate('reviews', 'title content rating');
-    
+    .populate({
+      path: 'reviews',
+      select: 'title content user photos isAnonymous createdAt',
+      populate: {
+        path: 'user',
+        select: 'name email avatar',
+      },
+    });
+
   if (place) {
     // Track view (async, don't wait for it)
     trackPlaceView(id, userId).catch(console.error);
+
+    // Get detailed rating information
+    const ratingDetails = await ratingService.getCriteriaAverages(id);
+
+    // Add rating details to place object
+    const placeWithRatings = place.toObject();
+    placeWithRatings.ratingDetails = ratingDetails;
+
+    return placeWithRatings;
   }
-  
+
   return place;
 };
 
@@ -90,20 +180,20 @@ const getPlaceById = async (id, userId = null) => {
 const updatePlaceById = async (placeId, updateBody, userId = null, isAdmin = false) => {
   const place = await getPlaceById(placeId);
   if (!place) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Place not found');
+    throw new NOT_FOUND('Place not found');
   }
-  
+
   // Check ownership (admin can update any place, users can only update their own)
   if (!isAdmin && place.createdBy && place.createdBy.toString() !== userId) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own places');
+    throw new FORBIDDEN('You can only update your own places');
   }
-  
+
   // Create merged data for validation
   const mergedData = { ...place.toObject(), ...updateBody };
-  
+
   // Validate content for restricted words
   await validatePlaceContent(mergedData);
-  
+
   // Process content to replace warn/hide words
   const processedUpdateBody = { ...updateBody };
   if (processedUpdateBody.name) {
@@ -132,7 +222,7 @@ const updatePlaceById = async (placeId, updateBody, userId = null, isAdmin = fal
       processedUpdateBody.address = await replaceRestrictedWords(processedUpdateBody.address);
     }
   }
-  
+
   Object.assign(place, processedUpdateBody);
   await place.save();
   return place;
@@ -148,14 +238,14 @@ const updatePlaceById = async (placeId, updateBody, userId = null, isAdmin = fal
 const deletePlaceById = async (placeId, userId = null, isAdmin = false) => {
   const place = await getPlaceById(placeId);
   if (!place) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Place not found');
+    throw new NOT_FOUND('Place not found');
   }
-  
+
   // Check ownership (admin can delete any place, users can only delete their own)
   if (!isAdmin && place.createdBy && place.createdBy.toString() !== userId) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'You can only delete your own places');
+    throw new FORBIDDEN('You can only delete your own places');
   }
-  
+
   await place.remove();
   return place;
 };
@@ -163,18 +253,34 @@ const deletePlaceById = async (placeId, userId = null, isAdmin = false) => {
 /**
  * Get places by category
  * @param {ObjectId} categoryId
- * @param {Object} options
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getPlacesByCategory = async (categoryId, options) => {
-  const filter = { categories: categoryId, status: 'active' };
-  return queryPlaces(filter, options);
+  const filter = { categories: categoryId, approvalStatus: 'approved' };
+  const places = await Place.paginate(filter, options);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
+  return places;
 };
 
 /**
- * Search places by name or description
+ * Search places
  * @param {string} searchTerm
- * @param {Object} options
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const searchPlaces = async (searchTerm, options) => {
@@ -182,20 +288,54 @@ const searchPlaces = async (searchTerm, options) => {
     $or: [
       { name: { $regex: searchTerm, $options: 'i' } },
       { description: { $regex: searchTerm, $options: 'i' } },
+      { 'address.fullAddress': { $regex: searchTerm, $options: 'i' } },
     ],
-    status: 'active',
+    approvalStatus: 'approved',
   };
-  return queryPlaces(filter, options);
+
+  const places = await Place.paginate(filter, options);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
+  return places;
 };
 
 /**
  * Get verified places
- * @param {Object} options
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getVerifiedPlaces = async (options) => {
-  const filter = { isVerified: true, status: 'active' };
-  return queryPlaces(filter, options);
+  const filter = { isVerified: true, approvalStatus: 'approved' };
+  const places = await Place.paginate(filter, options);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
+  return places;
 };
 
 /**
@@ -205,13 +345,15 @@ const getVerifiedPlaces = async (options) => {
  * @param {string} approvedBy - User ID who approved/rejected
  * @returns {Promise<Place>}
  */
-const updatePlaceApprovalStatus = async (placeId, status, approvedBy) => {
-  const place = await getPlaceById(placeId);
+const updatePlaceApprovalStatus = async (placeId, status, reason, approvedBy) => {
+  const place = await Place.findOne({ _id: placeId });
   if (!place) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Place not found');
+    throw new NOT_FOUND('Place not found');
   }
+
   place.approvalStatus = status;
   place.approvedBy = approvedBy;
+  place.rejectionReason = reason;
   if (status === 'approved') {
     place.isVerified = true;
   }
@@ -229,7 +371,7 @@ const updatePlaceApprovalStatus = async (placeId, status, approvedBy) => {
 const updatePlaceRating = async (placeId, averageRating, totalRatings) => {
   const place = await getPlaceById(placeId);
   if (!place) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Place not found');
+    throw new NOT_FOUND('Place not found');
   }
   place.averageRating = averageRating;
   place.totalRatings = totalRatings;
@@ -239,160 +381,368 @@ const updatePlaceRating = async (placeId, averageRating, totalRatings) => {
 
 /**
  * Get trending places
- * @param {Object} options
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getTrendingPlaces = async (options) => {
-  return getTrendingPlacesFromTracking(options);
+  const trendingPlaces = await getTrendingPlacesFromTracking(options);
+
+  // Add rating details to each place
+  if (trendingPlaces.results && trendingPlaces.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      trendingPlaces.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toJSON(),
+          ratingDetails,
+        };
+      }),
+    );
+    trendingPlaces.results = placesWithRatings;
+  }
+
+  return trendingPlaces;
 };
 
 /**
  * Get hot places by category
  * @param {ObjectId} categoryId
- * @param {Object} options
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getHotPlacesByCategory = async (categoryId, options) => {
-  return getHotPlacesByCategoryFromTracking(categoryId, options);
+  const hotPlaces = await getHotPlacesByCategoryFromTracking(categoryId, options);
+
+  // Add rating details to each place
+  if (hotPlaces.results && hotPlaces.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      hotPlaces.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place,
+          ratingDetails,
+        };
+      }),
+    );
+    hotPlaces.results = placesWithRatings;
+  }
+
+  return hotPlaces;
 };
 
 /**
- * Get hot places in a week
- * @param {Object} options
+ * Get hot places weekly
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getHotPlacesWeekly = async (options) => {
-  return getTrendingPlacesFromTracking({ ...options, period: 'weekly' });
+  const filter = { approvalStatus: 'approved' };
+  const sortOptions = { ...options, sortBy: 'weeklyHotScore:desc' };
+  const places = await Place.paginate(filter, sortOptions);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
+  return places;
 };
 
 // Public routes
 /**
- * Get public place by id (only approved and active places)
+ * Get public place by id (approved places only)
  * @param {ObjectId} id
  * @returns {Promise<Place>}
  */
 const getPublicPlaceById = async (id) => {
-  const place = await Place.findOne({ 
-    _id: id, 
-    status: 'active', 
-    approvalStatus: 'approved' 
+  const place = await Place.findOne({
+    _id: id,
+    approvalStatus: 'approved',
   })
     .populate('categories', 'name')
-    .populate('reviews', 'title content rating');
-    
+    .populate({
+      path: 'reviews',
+      select: 'title content user photos isAnonymous createdAt',
+      populate: {
+        path: 'user',
+        select: 'name email avatar',
+      },
+    })
+    .lean();
+
   if (place) {
-    // Track view (async, don't wait for it)
-    trackPlaceView(id, null).catch(console.error);
+    // Get detailed rating information
+    const ratingDetails = await ratingService.getCriteriaAverages(id);
+
+    // Add rating details to place object
+    place.ratingDetails = ratingDetails;
   }
-  
+
   return place;
 };
 
 // User routes
 /**
- * Get user places (places that user can see based on their role)
- * @param {Object} filter
- * @param {Object} options
- * @param {string} userId
+ * Get user places
+ * @param {Object} filter - Mongo filter
+ * @param {Object} options - Query options
+ * @param {string} userId - User ID
  * @returns {Promise<QueryResult>}
  */
 const getUserPlaces = async (filter, options, userId) => {
-  // Users can see their own places and approved places
-  const userFilter = {
-    $or: [
-      { createdBy: userId },
-      { status: 'active', approvalStatus: 'approved' }
-    ],
-    ...filter
-  };
-  
-  const places = await Place.paginate(userFilter, {
-    ...options,
-    populate: 'categories',
-  });
+  const userFilter = { ...filter, createdBy: userId };
+  const places = await Place.paginate(userFilter, options);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
   return places;
 };
 
 /**
- * Get my places (places created by the current user)
- * @param {Object} filter
- * @param {Object} options
- * @param {string} userId
+ * Get my places (places created by the user)
+ * @param {Object} filter - Mongo filter
+ * @param {Object} options - Query options
+ * @param {string} userId - User ID
  * @returns {Promise<QueryResult>}
  */
 const getMyPlaces = async (filter, options, userId) => {
-  const myFilter = { createdBy: userId, ...filter };
-  
-  const places = await Place.paginate(myFilter, {
-    ...options,
-    populate: 'categories',
-  });
+  const myFilter = { ...filter, createdBy: userId };
+  const places = await Place.paginate(myFilter, options);
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
   return places;
 };
 
 /**
  * Get user place by id (with ownership check)
  * @param {ObjectId} id
- * @param {string} userId
+ * @param {string} userId - User ID for ownership check
  * @returns {Promise<Place>}
  */
 const getUserPlaceById = async (id, userId) => {
   const place = await Place.findOne({
     _id: id,
-    $or: [
-      { createdBy: userId },
-      { status: 'active', approvalStatus: 'approved' }
-    ]
+    createdBy: userId,
   })
     .populate('categories', 'name')
-    .populate('reviews', 'title content rating')
-    .populate('createdBy', 'name email');
-    
+    .populate({
+      path: 'reviews',
+      select: 'title content user photos isAnonymous createdAt',
+      populate: {
+        path: 'user',
+        select: 'name email avatar',
+      },
+    });
+
   if (place) {
     // Track view (async, don't wait for it)
     trackPlaceView(id, userId).catch(console.error);
+
+    // Get detailed rating information
+    const ratingDetails = await ratingService.getCriteriaAverages(id);
+
+    // Add rating details to place object
+    const placeWithRatings = place.toObject();
+    placeWithRatings.ratingDetails = ratingDetails;
+
+    return placeWithRatings;
   }
-  
+
   return place;
 };
 
 // Admin routes
 /**
- * Get admin places (all places with admin filters)
- * @param {Object} filter
- * @param {Object} options
+ * Get admin places (all places)
+ * @param {Object} filter - Mongo filter
+ * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
 const getAdminPlaces = async (filter, options) => {
+  // Check if custom sorting is requested
+  if (options.customSort && options.customSort.approvalStatus) {
+    const { limit = 10, page = 1 } = options;
+    
+    // Use aggregation pipeline for custom sorting
+    const pipeline = [
+      { $match: filter },
+      {
+        $addFields: {
+          approvalStatusOrder: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$approvalStatus', 'pending'] }, then: 1 },
+                { case: { $eq: ['$approvalStatus', 'approved'] }, then: 2 },
+                { case: { $eq: ['$approvalStatus', 'rejected'] }, then: 3 }
+              ],
+              default: 4
+            }
+          }
+        }
+      },
+      { $sort: { approvalStatusOrder: 1, createdAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categories',
+          foreignField: '_id',
+          as: 'categories'
+        }
+      }
+    ];
+
+    // Get total count for pagination
+    const totalResults = await Place.countDocuments(filter);
+    const totalPages = Math.ceil(totalResults / limit);
+
+    const places = await Place.aggregate(pipeline);
+
+    // Add rating details to each place
+    if (places && places.length > 0) {
+      const placesWithRatings = await Promise.all(
+        places.map(async (place) => {
+          const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+          return {
+            ...place,
+            ratingDetails,
+          };
+        }),
+      );
+      places.splice(0, places.length, ...placesWithRatings);
+    }
+
+    return {
+      results: places,
+      page,
+      limit,
+      totalPages,
+      totalResults,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    };
+  }
+
+  // Use regular pagination if no custom sorting
   const places = await Place.paginate(filter, {
     ...options,
-    populate: [
-      { path: 'categories', select: 'name type slug' },
-      { path: 'createdBy', select: 'name email' },
-      { path: 'approvedBy', select: 'name email' }
-    ],
+    populate: { path: 'categories' },
   });
+
+  // Add rating details to each place
+  if (places.results && places.results.length > 0) {
+    const placesWithRatings = await Promise.all(
+      places.results.map(async (place) => {
+        const ratingDetails = await ratingService.getCriteriaAverages(place._id);
+        return {
+          ...place.toObject(),
+          ratingDetails,
+        };
+      }),
+    );
+    places.results = placesWithRatings;
+  }
+
   return places;
 };
 
 /**
- * Get admin place by id (with full details)
+ * Get admin place by id (all places)
  * @param {ObjectId} id
  * @returns {Promise<Place>}
  */
 const getAdminPlaceById = async (id) => {
   const place = await Place.findById(id)
     .populate('categories', 'name')
-    .populate('reviews', 'title content rating')
+    .populate({
+      path: 'reviews',
+      select: 'title content user photos isAnonymous createdAt',
+      populate: {
+        path: 'user',
+        select: 'name email avatar',
+      },
+    })
     .populate('createdBy', 'name email')
     .populate('approvedBy', 'name email');
-  
+
+  if (place) {
+    // Get detailed rating information
+    const ratingDetails = await ratingService.getCriteriaAverages(id);
+
+    // Add rating details to place object
+    const placeWithRatings = place.toObject();
+    placeWithRatings.ratingDetails = ratingDetails;
+
+    return placeWithRatings;
+  }
+
   return place;
+};
+
+const getPublicPlaceBySlug = async (slug) => {
+  const place = await Place.findOne({ slug, approvalStatus: 'approved' })
+    .populate('categories', 'name')
+    .lean()
+
+  if (!place) {
+    throw new NOT_FOUND('Place not found');
+  }
+
+  const reviews = await reviewService.getReviewsByPlace(place.id);
+
+  const ratingDetails = await ratingService.getCriteriaAverages(place.id);
+
+  const placeWithRatings = place;
+  placeWithRatings.ratingDetails = ratingDetails;
+  placeWithRatings.reviews = reviews.results || [];
+
+  return placeWithRatings;
+};
+
+const countPlaceByCategory = async (categoryId) => {
+  const count = await Place.countDocuments({ categories: categoryId, approvalStatus: 'approved' });
+  return count;
 };
 
 module.exports = {
   createPlace,
   queryPlaces,
+  countPlaceByCategory,
   getPlaceById,
   updatePlaceById,
   deletePlaceById,
@@ -404,13 +754,11 @@ module.exports = {
   getTrendingPlaces,
   getHotPlacesByCategory,
   getHotPlacesWeekly,
-  // Public routes
   getPublicPlaceById,
-  // User routes
   getUserPlaces,
   getMyPlaces,
   getUserPlaceById,
-  // Admin routes
   getAdminPlaces,
   getAdminPlaceById,
-}; 
+  getPublicPlaceBySlug,
+};

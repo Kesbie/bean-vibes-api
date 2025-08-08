@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
+const { toJSON, paginate } = require('./plugins');
 
-
-const ratingSchema = mongoose.Schema({
+const ratingSchema = new mongoose.Schema({
   place: {
     type: mongoose.SchemaTypes.ObjectId,
     ref: 'Place',
@@ -42,6 +42,8 @@ const ratingSchema = mongoose.Schema({
   timestamps: true,
 });
 
+ratingSchema.plugin(toJSON);
+ratingSchema.plugin(paginate);
 
 /**
  * @typedef Rating

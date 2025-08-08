@@ -1,7 +1,7 @@
 const catchAsync = require('../utils/catchAsync');
-const { placeService, contentFilterService } = require('../services');
+const { placeService, contentFilterService, categoryService } = require('../services');
 const pick = require('../utils/pick');
-const { NOT_FOUND} = require('../utils/error.response');
+const { NOT_FOUND } = require('../utils/error.response');
 const { OK, CREATED, NO_CONTENT } = require('../utils/success.response');
 
 // ========================================
@@ -9,12 +9,77 @@ const { OK, CREATED, NO_CONTENT } = require('../utils/success.response');
 // ========================================
 // Client can only see approved and active places
 const getPublicPlaces = catchAsync(async (req, res) => {
-  const filter = pick(req.query, ['categories', 'district', 'ward']);
-  filter.status = 'active';
+  const filter = pick(req.query, ['name', 'category']);
+  console.log('--------------------------------');
+  console.log(filter);
+
+  // filter.status = 'active';
   filter.approvalStatus = 'approved';
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await placeService.queryPlaces(filter, options);
   new OK(result).send(res);
+});
+
+const getPlaces = catchAsync(async (req, res) => {
+  const filter = pick(req.query, ['name']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+
+  // Handle category filter - support multiple formats
+  if (req.query.category) {
+    let categorySlugs = [];
+    
+    // Format 1: Single category slug
+    if (typeof req.query.category === 'string') {
+      categorySlugs = req.query.category.split(',').map(slug => slug.trim());
+    }
+    // Format 2: Array of category slugs (when sent as multiple params)
+    else if (Array.isArray(req.query.category)) {
+      categorySlugs = req.query.category.flatMap(cat => 
+        typeof cat === 'string' ? cat.split(',').map(slug => slug.trim()) : [cat]
+      );
+    }
+    
+    // Remove empty strings and duplicates
+    categorySlugs = [...new Set(categorySlugs.filter(slug => slug.length > 0))];
+    
+    if (categorySlugs.length > 0) {
+      filter.category = categorySlugs;
+    }
+  }
+
+  // Handle categories filter (alternative parameter name)
+  if (req.query.categories) {
+    let categorySlugs = [];
+    
+    // Format 1: Single category slug
+    if (typeof req.query.categories === 'string') {
+      categorySlugs = req.query.categories.split(',').map(slug => slug.trim());
+    }
+    // Format 2: Array of category slugs
+    else if (Array.isArray(req.query.categories)) {
+      categorySlugs = req.query.categories.flatMap(cat => 
+        typeof cat === 'string' ? cat.split(',').map(slug => slug.trim()) : [cat]
+      );
+    }
+    
+    // Remove empty strings and duplicates
+    categorySlugs = [...new Set(categorySlugs.filter(slug => slug.length > 0))];
+    
+    if (categorySlugs.length > 0) {
+      filter.category = categorySlugs;
+    }
+  }
+
+  // Non-admin users (including unauthenticated) only see approved places
+  filter.approvalStatus = 'approved';
+
+  const result = await placeService.queryPlaces(filter, options);
+  new OK(result).send(res);
+});
+
+const getPublicPlaceBySlug = catchAsync(async (req, res) => {
+  const place = await placeService.getPublicPlaceBySlug(req.params.slug);
+  new OK(place).send(res);
 });
 
 const getPublicPlace = catchAsync(async (req, res) => {
@@ -91,7 +156,7 @@ const getMyPlaces = catchAsync(async (req, res) => {
 const getUserPlace = catchAsync(async (req, res) => {
   const place = await placeService.getUserPlaceById(req.params.placeId, req.user.id);
   if (!place) {
-    new NOT_FOUND.res('Place not found');
+    throw new NOT_FOUND('Place not found');
   }
   new OK(place).send(res);
 });
@@ -120,6 +185,9 @@ const checkPlaceContent = catchAsync(async (req, res) => {
 const getAdminPlaces = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['status', 'approvalStatus', 'isVerified', 'createdBy']);
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  options.customSort = {
+    approvalStatus: true
+  };
   const result = await placeService.getAdminPlaces(filter, options);
   new OK(result).send(res);
 });
@@ -134,14 +202,14 @@ const getPendingPlaces = catchAsync(async (req, res) => {
 const getAdminPlace = catchAsync(async (req, res) => {
   const place = await placeService.getAdminPlaceById(req.params.placeId);
   if (!place) {
-    new NOT_FOUND.res('Place not found');
+    throw new NOT_FOUND('Place not found');
   }
   new OK(place).send(res);
 });
 
 const updatePlaceApprovalStatus = catchAsync(async (req, res) => {
-  const { status } = req.body;
-  const place = await placeService.updatePlaceApprovalStatus(req.params.placeId, status, req.user.id);
+  const { status, reason } = req.body;
+  const place = await placeService.updatePlaceApprovalStatus(req.params.placeId, status, reason, req.user.id);
   new OK(place).send(res);
 });
 
@@ -154,6 +222,8 @@ const updatePlaceRating = catchAsync(async (req, res) => {
 module.exports = {
   // Public routes
   getPublicPlaces,
+  getPublicPlaceBySlug,
+  getPlaces,
   getPublicPlace,
   searchPlaces,
   getTrendingPlaces,
@@ -175,4 +245,4 @@ module.exports = {
   getAdminPlace,
   updatePlaceApprovalStatus,
   updatePlaceRating,
-}; 
+};

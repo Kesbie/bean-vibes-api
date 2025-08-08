@@ -14,7 +14,7 @@ const createComment = catchAsync(async (req, res) => {
 
 const getComments = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['review', 'user']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'includeHidden']);
   const result = await commentService.queryComments(filter, options);
   res.send(result);
 });
@@ -37,6 +37,16 @@ const deleteComment = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+const hideComment = catchAsync(async (req, res) => {
+  const comment = await commentService.hideCommentById(req.params.commentId);
+  res.send(comment);
+});
+
+const unhideComment = catchAsync(async (req, res) => {
+  const comment = await commentService.unhideCommentById(req.params.commentId);
+  res.send(comment);
+});
+
 const getCommentsByReview = catchAsync(async (req, res) => {
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await commentService.getCommentsByReviewId(req.params.reviewId, options);
@@ -55,6 +65,8 @@ module.exports = {
   getComment,
   updateComment,
   deleteComment,
+  hideComment,
+  unhideComment,
   getCommentsByReview,
   getCommentsByUser,
 }; 

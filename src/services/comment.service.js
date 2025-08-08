@@ -19,10 +19,18 @@ const createComment = async (commentBody) => {
  * @param {string} [options.sortBy] - Sort option in the format: sortField:(desc|asc)
  * @param {number} [options.limit] - Maximum number of results per page (default = 10)
  * @param {number} [options.page] - Current page (default = 1)
+ * @param {boolean} [options.includeHidden] - Whether to include hidden comments
  * @returns {Promise<QueryResult>}
  */
 const queryComments = async (filter, options) => {
-  const comments = await Comment.paginate(filter, options);
+  const { includeHidden, ...queryOptions } = options;
+  
+  // By default, exclude hidden comments unless explicitly requested
+  if (!includeHidden) {
+    filter.isHidden = { $ne: true };
+  }
+  
+  const comments = await Comment.paginate(filter, queryOptions);
   return comments;
 };
 
@@ -66,6 +74,36 @@ const deleteCommentById = async (commentId) => {
 };
 
 /**
+ * Hide comment by id (admin only)
+ * @param {ObjectId} commentId
+ * @returns {Promise<Comment>}
+ */
+const hideCommentById = async (commentId) => {
+  const comment = await getCommentById(commentId);
+  if (!comment) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Comment not found');
+  }
+  comment.isHidden = true;
+  await comment.save();
+  return comment;
+};
+
+/**
+ * Unhide comment by id (admin only)
+ * @param {ObjectId} commentId
+ * @returns {Promise<Comment>}
+ */
+const unhideCommentById = async (commentId) => {
+  const comment = await getCommentById(commentId);
+  if (!comment) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Comment not found');
+  }
+  comment.isHidden = false;
+  await comment.save();
+  return comment;
+};
+
+/**
  * Get comments by review id
  * @param {ObjectId} reviewId
  * @param {Object} options
@@ -93,6 +131,8 @@ module.exports = {
   getCommentById,
   updateCommentById,
   deleteCommentById,
+  hideCommentById,
+  unhideCommentById,
   getCommentsByReviewId,
   getCommentsByUserId,
 }; 

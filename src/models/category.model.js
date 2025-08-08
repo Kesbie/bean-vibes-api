@@ -2,11 +2,12 @@ const mongoose = require('mongoose');
 const { categoryType } = require('../config/categoryType');
 const { toJSON, paginate } = require('./plugins');
 const slugify = require('slugify');
+const { normalizeVietnamese } = require('../utils/nomalizeText');
 
 /** @typedef {import("mongoose").Schema} Schema */
 
 /** @type {Schema} */
-const categorySchema = mongoose.Schema(
+const categorySchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -45,7 +46,8 @@ categorySchema.statics.isSlugTaken = async function (slug) {
 
 categorySchema.pre('save', async function (next) {
   if (!this.slug) {
-    this.slug = slugify(this.name, { lower: true });
+    const name = normalizeVietnamese(this.name)
+    this.slug = slugify(name, { lower: true });
     const isSlugTaken = await Category.isSlugTaken(this.slug);
     if (isSlugTaken) {
       this.slug = `${this.slug}-${this._id}`;

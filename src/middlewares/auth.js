@@ -30,4 +30,21 @@ const auth =
       .catch((err) => next(err));
   };
 
-module.exports = auth;
+// Optional authentication middleware - doesn't fail if no token provided
+const optionalAuth = async (req, res, next) => {
+  return new Promise((resolve) => {
+    passport.authenticate('jwt', { session: false }, (err, user, info) => {
+      if (err || info || !user) {
+        // No user found, but continue without authentication
+        req.user = null;
+        return resolve();
+      }
+      req.user = user;
+      resolve();
+    })(req, res, next);
+  })
+    .then(() => next())
+    .catch((err) => next(err));
+};
+
+module.exports = { auth, optionalAuth };

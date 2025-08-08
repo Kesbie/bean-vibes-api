@@ -15,7 +15,21 @@ const password = (value, helpers) => {
   return value;
 };
 
+const file = (value, helpers) => {
+  console.log(value);
+  if (!value.url) {
+    return helpers.message('"{{#label}}" must have a valid file url');
+  }
+
+  if (!value.originalName) {
+    return helpers.message('"{{#label}}" must have a valid file original name');
+  }
+
+  return value;
+};
+
 module.exports = {
   objectId,
   password,
+  file,
 };
