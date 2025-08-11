@@ -75,9 +75,9 @@ router
 // ========================================
 // Admin can see and manage all places
 
-router
-  .route('/admin/pending')
-  .get(auth('approvePlaces'), validate(placeValidation.getPendingPlaces), placeController.getPendingPlaces);
+// router
+//   .route('/admin/pending')
+//   .get(auth('approvePlaces'), validate(placeValidation.getPendingPlaces), placeController.getPendingPlaces);
 
 router
   .route('/admin/:placeId')

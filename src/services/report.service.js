@@ -194,7 +194,7 @@ const deleteReportById = async (reportId) => {
   if (!report) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Report not found');
   }
-  await report.remove();
+  await Report.findByIdAndDelete(reportId);
   return report;
 };
 

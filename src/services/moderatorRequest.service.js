@@ -105,7 +105,7 @@ const deleteModeratorRequestById = async (requestId) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Moderator request not found');
   }
 
-  await request.remove();
+  await ModeratorRequest.findByIdAndDelete(requestId);
   return request;
 };
 

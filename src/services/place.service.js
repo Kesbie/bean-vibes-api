@@ -142,15 +142,7 @@ const queryPlaces = async (filter, options) => {
  */
 const getPlaceById = async (id, userId = null) => {
   const place = await Place.findById(id)
-    .populate('categories', 'name')
-    .populate({
-      path: 'reviews',
-      select: 'title content user photos isAnonymous createdAt',
-      populate: {
-        path: 'user',
-        select: 'name email avatar',
-      },
-    });
+    .populate('categories', 'name');
 
   if (place) {
     // Track view (async, don't wait for it)
@@ -246,7 +238,7 @@ const deletePlaceById = async (placeId, userId = null, isAdmin = false) => {
     throw new FORBIDDEN('You can only delete your own places');
   }
 
-  await place.remove();
+  await Place.findByIdAndDelete(placeId);
   return place;
 };
 
@@ -469,14 +461,6 @@ const getPublicPlaceById = async (id) => {
     approvalStatus: 'approved',
   })
     .populate('categories', 'name')
-    .populate({
-      path: 'reviews',
-      select: 'title content user photos isAnonymous createdAt',
-      populate: {
-        path: 'user',
-        select: 'name email avatar',
-      },
-    })
     .lean();
 
   if (place) {
@@ -558,15 +542,7 @@ const getUserPlaceById = async (id, userId) => {
     _id: id,
     createdBy: userId,
   })
-    .populate('categories', 'name')
-    .populate({
-      path: 'reviews',
-      select: 'title content user photos isAnonymous createdAt',
-      populate: {
-        path: 'user',
-        select: 'name email avatar',
-      },
-    });
+    .populate('categories', 'name');
 
   if (place) {
     // Track view (async, don't wait for it)
@@ -689,14 +665,6 @@ const getAdminPlaces = async (filter, options) => {
 const getAdminPlaceById = async (id) => {
   const place = await Place.findById(id)
     .populate('categories', 'name')
-    .populate({
-      path: 'reviews',
-      select: 'title content user photos isAnonymous createdAt',
-      populate: {
-        path: 'user',
-        select: 'name email avatar',
-      },
-    })
     .populate('createdBy', 'name email')
     .populate('approvedBy', 'name email');
 

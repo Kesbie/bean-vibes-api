@@ -69,7 +69,7 @@ const deleteCommentById = async (commentId) => {
   if (!comment) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Comment not found');
   }
-  await comment.remove();
+  await Comment.findByIdAndDelete(commentId);
   return comment;
 };
 

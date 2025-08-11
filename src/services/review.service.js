@@ -29,7 +29,7 @@ const createReview = async (reviewBody) => {
  * @param {boolean} [options.includeHidden] - Whether to include hidden reviews
  * @returns {Promise<QueryResult>}
  */
-const queryReviews = async (filter, options) => {
+const queryReviews = async (filter, options = {}) => {
   const { includeHidden, ...queryOptions } = options;
   
   // By default, exclude hidden reviews unless explicitly requested
@@ -88,7 +88,7 @@ const deleteReviewById = async (reviewId) => {
   if (!review) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Review not found');
   }
-  await review.remove();
+  await Review.findByIdAndDelete(reviewId);
   return review;
 };
 

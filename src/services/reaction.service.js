@@ -64,7 +64,7 @@ const deleteReactionById = async (reactionId) => {
   if (!reaction) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Reaction not found');
   }
-  await reaction.remove();
+  await Reaction.findByIdAndDelete(reactionId);
   return reaction;
 };
 
@@ -129,7 +129,7 @@ const toggleReaction = async (userId, reviewId = null, commentId = null, type) =
   
   if (existingReaction) {
     // Remove existing reaction
-    await existingReaction.remove();
+    await Reaction.findByIdAndDelete(existingReaction._id);
     return null;
   } else {
     // Create new reaction
